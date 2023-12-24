@@ -32,7 +32,8 @@ pub fn get_hash_key(document: &QueryPayload) -> Result<String, Error> {
     let mut hasher = Sha256::new();
     hasher.update(text);
     let hash = hasher.finalize();
-    Ok(format!("CACHE_ASIDE_{:x}", hash))
+    let hash = hex::encode(hash);
+    Ok(format!("CACHE_ASIDE_{hash}"))
 }
 
 #[derive(Serialize)]
@@ -65,4 +66,12 @@ impl IntoResponse for AppError {
         let body = Json(json!({ "error": error_message }));
         (status, body).into_response()
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Product {
+    pub product_id: String,
+    pub price: u64,
+    pub product_display_name: String,
+    pub brand_name: String,
 }
