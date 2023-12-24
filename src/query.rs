@@ -4,22 +4,21 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Error};
-use sha2::{Digest, Sha256};
+use serde_json::json;
 
 #[derive(Debug)]
 pub struct Query {
     pub key: String,
     pub value: String,
 }
-
+#[allow(dead_code)]
 impl Query {
     pub fn new(key: String, value: String) -> Self {
         Self { key, value }
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct QueryPayload {
     pub product_id: String,
     pub price: u64,
@@ -27,27 +26,19 @@ pub struct QueryPayload {
     pub brand_name: String,
 }
 
-pub fn get_hash_key(document: &QueryPayload) -> Result<String, Error> {
-    let text = serde_json::to_string(document).unwrap();
-    let mut hasher = Sha256::new();
-    hasher.update(text);
-    let hash = hasher.finalize();
-    let hash = hex::encode(hash);
-    Ok(format!("CACHE_ASIDE_{hash}"))
-}
-
 #[derive(Serialize)]
 pub struct QueryBody {
-    pub result: String,
+    pub data: Vec<Product>,
 }
 
 impl QueryBody {
-    pub fn new(query: String) -> Self {
-        Self { result: query }
+    pub fn new(result: Vec<Product>) -> Self {
+        Self { data: result }
     }
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum AppError {
     DataNotFound,
     InvalidQuery,
