@@ -7,7 +7,6 @@ pub struct RedisServer {
     pub conn: redis::aio::MultiplexedConnection,
 }
 
-
 impl RedisServer {
     pub async fn new(host: String, port: u16) -> Self {
         let client = redis::Client::open(format!("redis://{host}:{port}")).unwrap();

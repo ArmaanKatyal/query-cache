@@ -1,2 +1,2 @@
-pub mod redis_client;
 pub mod mongo;
+pub mod redis_client;

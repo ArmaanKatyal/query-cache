@@ -2,7 +2,10 @@ use log::info;
 use serde_json::Error;
 use sha2::{Digest, Sha256};
 
-use crate::{database::redis_client::RedisServer, query::{QueryPayload, Product}};
+use crate::{
+    database::redis_client::RedisServer,
+    query::{Product, QueryPayload},
+};
 
 #[derive(Clone)]
 pub struct Cache {
@@ -16,22 +19,33 @@ impl Cache {
         Self { redis: rdb }
     }
 
-    pub async fn get(&mut self, payload: &QueryPayload) -> Result<Option<String>, redis::RedisError> {
-        let hash_key = get_hash_key(payload).map_err(|_| redis::RedisError::from((
-            redis::ErrorKind::TypeError,
-            "failed to get hash key",
-        )));
+    pub async fn get(
+        &mut self,
+        payload: &QueryPayload,
+    ) -> Result<Option<String>, redis::RedisError> {
+        let hash_key = get_hash_key(payload).map_err(|_| {
+            redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
+        });
         let result = self.redis.get(hash_key.unwrap().as_str()).await;
-        return result
+        return result;
     }
 
-    pub async fn set(&mut self, payload: &QueryPayload, product: &Product) -> Result<(), redis::RedisError> {
-        let hash_key = get_hash_key(payload).map_err(|_| redis::RedisError::from((
-            redis::ErrorKind::TypeError,
-            "failed to get hash key",
-        )));
-        let result = self.redis.set(hash_key.unwrap().as_str(), serde_json::to_string(product).unwrap().as_str()).await;
-        return result
+    pub async fn set(
+        &mut self,
+        payload: &QueryPayload,
+        product: &Product,
+    ) -> Result<(), redis::RedisError> {
+        let hash_key = get_hash_key(payload).map_err(|_| {
+            redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
+        });
+        let result = self
+            .redis
+            .set(
+                hash_key.unwrap().as_str(),
+                serde_json::to_string(product).unwrap().as_str(),
+            )
+            .await;
+        return result;
     }
 }
 
