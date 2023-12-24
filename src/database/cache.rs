@@ -13,11 +13,7 @@ impl RedisServer {
     pub async fn new(host: String, port: u16) -> Self {
         let client = redis::Client::open(format!("redis://{}:{}", host, port)).unwrap();
         let conn = client.get_multiplexed_async_connection().await.unwrap();
-        Self {
-            host,
-            port,
-            conn,
-        }
+        Self { host, port, conn }
     }
 
     pub async fn get(&mut self, key: &str) -> Result<Option<String>, redis::RedisError> {
