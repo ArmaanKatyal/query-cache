@@ -12,18 +12,6 @@ use serde_json::json;
 
 use crate::AppState;
 
-#[derive(Debug)]
-pub struct Query {
-    pub key: String,
-    pub value: String,
-}
-#[allow(dead_code)]
-impl Query {
-    pub fn new(key: String, value: String) -> Self {
-        Self { key, value }
-    }
-}
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct QueryPayload {
     pub product_id: String,
@@ -44,10 +32,8 @@ impl QueryBody {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum AppError {
     DataNotFound,
-    InvalidQuery,
     InternalServerError,
 }
 
@@ -55,7 +41,6 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             AppError::DataNotFound => (StatusCode::BAD_REQUEST, "Data not found"),
-            AppError::InvalidQuery => (StatusCode::BAD_REQUEST, "Invalid query"),
             AppError::InternalServerError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }

@@ -1,4 +1,4 @@
-use log::info;
+use log::{error, info};
 use serde_json::Error;
 use sha2::{Digest, Sha256};
 
@@ -24,6 +24,7 @@ impl Cache {
         payload: &QueryPayload,
     ) -> Result<Option<String>, redis::RedisError> {
         let hash_key = get_hash_key(payload).map_err(|_| {
+            error!("hash-key operation failed");
             redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
         });
         let result = self.redis.get(hash_key.unwrap().as_str()).await;
@@ -36,6 +37,7 @@ impl Cache {
         product: &Product,
     ) -> Result<(), redis::RedisError> {
         let hash_key = get_hash_key(payload).map_err(|_| {
+            error!("hash-key opertation failed");
             redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
         });
         let result = self
