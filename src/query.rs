@@ -5,8 +5,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use futures::stream::TryStreamExt;
 use log::info;
-use mongodb::bson::doc;
+use mongodb::{bson::doc, options::FindOptions};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -14,10 +15,10 @@ use crate::AppState;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct QueryPayload {
-    pub product_id: String,
-    pub price: u64,
-    pub product_display_name: String,
-    pub brand_name: String,
+    pub product_id: Option<String>,
+    pub price: Option<u64>,
+    pub product_display_name: Option<String>,
+    pub brand_name: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -70,32 +71,64 @@ pub async fn query_handler(
         .map_err(|_| AppError::InternalServerError)?;
     match result {
         Some(value) => {
-            info!("cache hit; product_id:{}", payload.product_id);
-            let payload = serde_json::from_str::<Product>(&value)
+            info!("cache hit");
+            let payload = serde_json::from_str::<Vec<Product>>(&value)
                 .map_err(|_| AppError::InternalServerError)?;
-            let result = QueryBody::new(vec![payload]);
+            let result = QueryBody::new(payload);
             Ok(Json(result))
         }
         None => {
-            info!("cache miss; product_id:{}", payload.product_id);
+            info!("cache miss");
+
             let db = s.mongo.conn.database("query_cache");
             let cache_payload = payload.clone();
             let collection = db.collection::<Product>("products");
-            let filter = doc! { "product_id": payload.product_id };
-            let product = collection
-                .find_one(filter, None)
-                .await
-                .map_err(|_| AppError::InternalServerError)?;
-            match product {
-                Some(value) => {
-                    s.cache
-                        .set(&cache_payload, &value)
-                        .await
-                        .map_err(|_| AppError::InternalServerError)?;
-                    let result = QueryBody::new(vec![value]);
-                    Ok(Json(result))
+
+            // TODO: Return output based on the values provided in the QueryPayload
+            if let Some(product_id) = payload.product_id {
+                let filter = doc! {"product_id": product_id};
+                let product = collection
+                    .find_one(filter, None)
+                    .await
+                    .map_err(|_| AppError::InternalServerError)?;
+                match product {
+                    Some(value) => {
+                        let into_vec = vec![value];
+                        s.cache
+                            .set(&cache_payload, &into_vec)
+                            .await
+                            .map_err(|_| AppError::InternalServerError)?;
+                        Ok(Json(QueryBody::new(into_vec)))
+                    }
+                    None => Err(AppError::DataNotFound),
                 }
-                None => Err(AppError::DataNotFound),
+            } else if let Some(product_name) = cache_payload.product_display_name {
+                let new_payload = payload.clone();
+                let re = mongodb::bson::Regex {
+                    pattern: format!(".*{}.*", product_name),
+                    options: String::from("i"),
+                };
+                let filter = doc! {"product_display_name": re};
+                let options = FindOptions::builder().limit(10).build();
+                let mut prods = collection
+                    .find(filter, options)
+                    .await
+                    .map_err(|_| AppError::InternalServerError)?;
+                let mut result = Vec::new();
+                while let Some(prod) = prods
+                    .try_next()
+                    .await
+                    .map_err(|_| AppError::InternalServerError)?
+                {
+                    result.push(prod);
+                }
+                s.cache
+                    .set(&new_payload, &result)
+                    .await
+                    .map_err(|_| AppError::InternalServerError)?;
+                Ok(Json(QueryBody::new(result)))
+            } else {
+                Err(AppError::DataNotFound)
             }
         }
     }

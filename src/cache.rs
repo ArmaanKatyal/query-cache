@@ -34,7 +34,7 @@ impl Cache {
     pub async fn set(
         &mut self,
         payload: &QueryPayload,
-        product: &Product,
+        product: &Vec<Product>,
     ) -> Result<(), redis::RedisError> {
         let hash_key = get_hash_key(payload).map_err(|_| {
             error!("hash-key opertation failed");
