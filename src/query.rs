@@ -78,17 +78,13 @@ pub async fn query_handler(
             Ok(Json(result))
         }
         None => {
-            info!("cache miss");
-
-            let db = s.mongo.conn.database("query_cache");
             let cache_payload = payload.clone();
+            let db = s.mongo.conn.database("query_cache");
             let collection = db.collection::<Product>("products");
-
-            // TODO: Return output based on the values provided in the QueryPayload
             if let Some(product_id) = payload.product_id {
-                let filter = doc! {"product_id": product_id};
+                info!("cache miss; product_id:{}", product_id);
                 let product = collection
-                    .find_one(filter, None)
+                    .find_one(doc! {"product_id": product_id}, None)
                     .await
                     .map_err(|_| AppError::InternalServerError)?;
                 match product {
@@ -102,16 +98,17 @@ pub async fn query_handler(
                     }
                     None => Err(AppError::DataNotFound),
                 }
-            } else if let Some(product_name) = cache_payload.product_display_name {
-                let new_payload = payload.clone();
+            } else if let Some(product_name) = payload.product_display_name {
+                info!("cache miss; product_name:{}", product_name);
                 let re = mongodb::bson::Regex {
                     pattern: format!(".*{}.*", product_name),
                     options: String::from("i"),
                 };
-                let filter = doc! {"product_display_name": re};
-                let options = FindOptions::builder().limit(10).build();
                 let mut prods = collection
-                    .find(filter, options)
+                    .find(
+                        doc! {"product_display_name": re},
+                        FindOptions::builder().limit(10).build(),
+                    )
                     .await
                     .map_err(|_| AppError::InternalServerError)?;
                 let mut result = Vec::new();
@@ -123,7 +120,7 @@ pub async fn query_handler(
                     result.push(prod);
                 }
                 s.cache
-                    .set(&new_payload, &result)
+                    .set(&cache_payload, &result)
                     .await
                     .map_err(|_| AppError::InternalServerError)?;
                 Ok(Json(QueryBody::new(result)))
