@@ -5,8 +5,6 @@ services:
         container_name: mongo1
         hostname: mongo
         environment:
-            MONGO_INITDB_ROOT_USERNAME: root
-            MONGO_INITDB_ROOT_PASSWORD: prod
             HOME: /data/db
         ports:
             - 27017:27017

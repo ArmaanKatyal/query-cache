@@ -29,7 +29,7 @@ impl CacheValue {
 
 impl Cache {
     pub async fn init() -> Self {
-        let rdb = RedisServer::new("127.0.0.1".to_string(), 6379).await;
+        let rdb = RedisServer::new("redis".to_string(), 6379).await;
         info!("connected to redis server on {}:{}", rdb.host, rdb.port);
         Self { redis: rdb }
     }

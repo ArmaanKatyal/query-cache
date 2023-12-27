@@ -19,7 +19,7 @@ struct AppState {
 async fn main() {
     env_logger::init();
 
-    let mongo = MongoClient::new("localhost".to_string(), 27017).await;
+    let mongo = MongoClient::new("mongo".to_string(), 27017).await;
     let cache = Cache::init().await;
     let app = Router::new()
         .route(

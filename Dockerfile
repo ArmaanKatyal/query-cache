@@ -6,4 +6,4 @@ RUN cargo build --release
 
 EXPOSE 3000
 
-CMD ["./target/release/query_cache"]
+CMD ["RUST_LOG=info ./target/release/query_cache"]
