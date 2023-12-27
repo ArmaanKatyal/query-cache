@@ -1,7 +1,8 @@
 # QueryCache
-a simple project to demonstrate how the usage of query-caching can improve the performance of a web application.
+a simple project to demonstrate how the usage of query-caching can signficantly improve the performance of a web application.
 
 Memcache: Redis
+
 Database: MongoDB
 
 ## Design
@@ -20,3 +21,6 @@ Popular queries are served from Redis to reduce the read latency. Reading 1 MB s
 - If the key is not found, the query is executed against the database (mongodb)
 - The result is stored in the cache
 - The result is returned to the client
+
+### When to invalidate the cache?
+The most straightforward way to handle these cases is to simply set a max time that a cached entry can stay in the cache before it is updated, usually referred to as time to live (TTL).

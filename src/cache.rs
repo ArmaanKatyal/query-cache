@@ -41,15 +41,16 @@ impl Cache {
         let hash_key = get_hash_key(payload).map_err(|_| {
             error!("hash-key operation failed");
             redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
-        });
-        let result = self.redis.get(hash_key.unwrap().as_str()).await;
+        }).ok();
+        let result = self.redis.get(hash_key.clone().unwrap().as_str()).await;
         match result {
             Ok(val) => {
                 match val {
                     Some(val) => {
                         let val: CacheValue = serde_json::from_str(val.as_str()).unwrap();
                         if val.ttl < Utc::now().timestamp() {
-                            // TODO: delete key from redis
+                            // cache expired
+                            self.redis.del(hash_key.unwrap().as_str()).await?;
                             return Ok(None);
                         }
                         return Ok(Some(val.product));

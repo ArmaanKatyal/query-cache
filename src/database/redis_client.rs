@@ -23,4 +23,9 @@ impl RedisServer {
         let result = self.conn.set(key, value).await?;
         Ok(result)
     }
+
+    pub async fn del(&mut self, key: &str) -> Result<(), redis::RedisError> {
+        let result = self.conn.del(key).await?;
+        Ok(result)
+    }
 }
