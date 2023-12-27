@@ -51,7 +51,7 @@ impl IntoResponse for AppError {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Product {
     pub product_id: String,
     pub price: u64,
@@ -72,9 +72,7 @@ pub async fn query_handler(
     match result {
         Some(value) => {
             info!("cache hit");
-            let payload = serde_json::from_str::<Vec<Product>>(&value)
-                .map_err(|_| AppError::InternalServerError)?;
-            let result = QueryBody::new(payload);
+            let result = QueryBody::new(value);
             Ok(Json(result))
         }
         None => {

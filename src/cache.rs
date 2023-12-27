@@ -1,4 +1,6 @@
+use chrono::Utc;
 use log::{error, info};
+use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use sha2::{Digest, Sha256};
 
@@ -12,6 +14,19 @@ pub struct Cache {
     pub redis: RedisServer,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct CacheValue {
+    product: Vec<Product>,
+    ttl: i64,
+}
+
+impl CacheValue {
+    pub fn new(product: Vec<Product>) -> Self {
+        let ttl = Utc::now().timestamp() + 60;
+        Self { product, ttl }
+    }
+}
+
 impl Cache {
     pub async fn init() -> Self {
         let rdb = RedisServer::new("127.0.0.1".to_string(), 6379).await;
@@ -22,13 +37,33 @@ impl Cache {
     pub async fn get(
         &mut self,
         payload: &QueryPayload,
-    ) -> Result<Option<String>, redis::RedisError> {
+    ) -> Result<Option<Vec<Product>>, redis::RedisError> {
         let hash_key = get_hash_key(payload).map_err(|_| {
             error!("hash-key operation failed");
             redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
         });
         let result = self.redis.get(hash_key.unwrap().as_str()).await;
-        return result;
+        match result {
+            Ok(val) => {
+                match val {
+                    Some(val) => {
+                        let val: CacheValue = serde_json::from_str(val.as_str()).unwrap();
+                        if val.ttl < Utc::now().timestamp() {
+                            // TODO: delete key from redis
+                            return Ok(None);
+                        }
+                        return Ok(Some(val.product));
+                    }
+                    None => {
+                        return Ok(None);
+                    }
+                }
+            }
+            Err(e) => {
+                error!("redis get operation failed: {:?}", e);
+                return Err(e);
+            }
+        }
     }
 
     pub async fn set(
@@ -40,11 +75,12 @@ impl Cache {
             error!("hash-key opertation failed");
             redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
         });
+        let val = CacheValue::new(product.clone());
         let result = self
             .redis
             .set(
                 hash_key.unwrap().as_str(),
-                serde_json::to_string(product).unwrap().as_str(),
+                serde_json::to_string(&val).unwrap().as_str(),
             )
             .await;
         return result;
