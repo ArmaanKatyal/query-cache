@@ -27,9 +27,9 @@ impl CacheValue {
     }
 }
 
-impl<R: RedisTrait> Cache<R> {
+impl<T: RedisTrait> Cache<T> {
     pub async fn init() -> Self {
-        let rdb: R = RedisTrait::new("redis".to_string(), 6379).await;
+        let rdb: T = RedisTrait::new("redis".to_string(), 6379).await;
         Self { redis: rdb }
     }
 
