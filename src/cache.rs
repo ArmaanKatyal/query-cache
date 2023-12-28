@@ -1,17 +1,17 @@
 use chrono::Utc;
-use log::{error, info};
+use log::error;
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use sha2::{Digest, Sha256};
 
 use crate::{
-    database::redis_client::RedisServer,
+    database::redis_client::RedisTrait,
     query::{Product, QueryPayload},
 };
 
 #[derive(Clone)]
-pub struct Cache {
-    pub redis: RedisServer,
+pub struct Cache<T: RedisTrait> {
+    pub redis: T,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,10 +27,9 @@ impl CacheValue {
     }
 }
 
-impl Cache {
+impl<R: RedisTrait> Cache<R> {
     pub async fn init() -> Self {
-        let rdb = RedisServer::new("redis".to_string(), 6379).await;
-        info!("connected to redis server on {}:{}", rdb.host, rdb.port);
+        let rdb: R = RedisTrait::new("redis".to_string(), 6379).await;
         Self { redis: rdb }
     }
 
@@ -38,10 +37,12 @@ impl Cache {
         &mut self,
         payload: &QueryPayload,
     ) -> Result<Option<Vec<Product>>, redis::RedisError> {
-        let hash_key = get_hash_key(payload).map_err(|_| {
-            error!("hash-key operation failed");
-            redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
-        }).ok();
+        let hash_key = get_hash_key(payload)
+            .map_err(|_| {
+                error!("hash-key operation failed");
+                redis::RedisError::from((redis::ErrorKind::TypeError, "failed to get hash key"))
+            })
+            .ok();
         let result = self.redis.get(hash_key.clone().unwrap().as_str()).await;
         match result {
             Ok(val) => {
@@ -95,4 +96,49 @@ pub fn get_hash_key(document: &QueryPayload) -> Result<String, Error> {
     let hash = hasher.finalize();
     let hash = hex::encode(hash);
     Ok(format!("CACHE_ASIDE_{hash}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::database::redis_client::tests::MockRedisServer;
+
+    #[test]
+    fn test_get_hash_key() {
+        let payload = QueryPayload {
+            product_id: Some("123".to_string()),
+            price: Some(123),
+            product_display_name: Some("test".to_string()),
+            brand_name: Some("test".to_string()),
+        };
+        let hash_key = get_hash_key(&payload).unwrap();
+        assert_eq!(hash_key.contains("CACHE_ASIDE_"), true)
+    }
+
+    #[test]
+    fn test_get_hash_key_with_empty_payload() {
+        let payload = QueryPayload {
+            product_id: None,
+            price: None,
+            product_display_name: None,
+            brand_name: None,
+        };
+        let hash_key = get_hash_key(&payload).unwrap();
+        assert_eq!(hash_key.contains("CACHE_ASIDE_"), true)
+    }
+
+    #[tokio::test]
+    async fn test_cache_get() {
+        let payload = QueryPayload {
+            product_id: Some("123".to_string()),
+            price: Some(123),
+            product_display_name: Some("test".to_string()),
+            brand_name: Some("test".to_string()),
+        };
+        let mut cache = Cache {
+            redis: MockRedisServer::new("redis".to_string(), 6379).await,
+        };
+        let result = cache.get(&payload).await;
+        assert_eq!(result.is_ok(), true);
+    }
 }

@@ -19,3 +19,7 @@ mongodb = "2.8.0"
 futures = "0.3"
 hex = "0.4.3"
 chrono = {version = "0.4.31", features = ["serde"]}
+async-trait = "0.1.75"
+
+[dev-dependencies]
+redis-test = "0.3.0"

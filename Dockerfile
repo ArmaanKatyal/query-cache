@@ -1,9 +1,12 @@
 FROM rust:1.74.1
 
+# Set the RUST_LOG environment variable
+ENV RUST_LOG=info
+
 COPY ./ ./
 
 RUN cargo build --release
 
 EXPOSE 3000
 
-CMD ["RUST_LOG=info ./target/release/query_cache"]
+CMD ["./target/release/query_cache"]

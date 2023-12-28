@@ -3,7 +3,10 @@ use axum::{
     Router,
 };
 use cache::Cache;
-use database::mongo::MongoClient;
+use database::{
+    mongo::{MongoClient, MongoTrait},
+    redis_client::RedisServer,
+};
 
 mod cache;
 mod database;
@@ -11,7 +14,7 @@ mod query;
 
 #[derive(Clone)]
 struct AppState {
-    cache: Cache,
+    cache: Cache<RedisServer>,
     mongo: MongoClient,
 }
 
@@ -19,7 +22,7 @@ struct AppState {
 async fn main() {
     env_logger::init();
 
-    let mongo = MongoClient::new("mongo".to_string(), 27017).await;
+    let mongo = MongoTrait::new("mongo".to_string(), 27017).await;
     let cache = Cache::init().await;
     let app = Router::new()
         .route(

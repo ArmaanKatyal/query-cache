@@ -1,6 +1,12 @@
+use async_trait::async_trait;
 use log::info;
 use mongodb::options::ClientOptions;
 use mongodb::Client;
+
+#[async_trait]
+pub trait MongoTrait {
+    async fn new(host: String, port: u16) -> Self;
+}
 
 #[derive(Clone)]
 pub struct MongoClient {
@@ -9,8 +15,9 @@ pub struct MongoClient {
     pub conn: Client,
 }
 
-impl MongoClient {
-    pub async fn new(host: String, port: u16) -> Self {
+#[async_trait]
+impl MongoTrait for MongoClient {
+    async fn new(host: String, port: u16) -> Self {
         let mut client_options = ClientOptions::parse(format!("mongodb://{host}:{port}"))
             .await
             .unwrap();
@@ -21,6 +28,22 @@ impl MongoClient {
             host,
             port,
             conn: client,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    pub struct MockMongoClient {
+        pub host: String,
+        pub port: u16,
+    }
+
+    #[async_trait]
+    impl MongoTrait for MockMongoClient {
+        async fn new(host: String, port: u16) -> Self {
+            Self { host, port }
         }
     }
 }

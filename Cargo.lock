@@ -1144,6 +1144,7 @@ dependencies = [
 name = "query_cache"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "axum",
  "axum-extra",
  "chrono",
@@ -1153,6 +1154,7 @@ dependencies = [
  "log",
  "mongodb",
  "redis",
+ "redis-test",
  "serde",
  "serde_json",
  "sha2",
@@ -1234,6 +1236,15 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "url",
+]
+
+[[package]]
+name = "redis-test"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "136fc13778b9fb91b5dfad24875088d411190a9a136d6815680e1a19b06dbec9"
+dependencies = [
+ "redis",
 ]
 
 [[package]]

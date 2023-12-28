@@ -128,3 +128,15 @@ pub async fn query_handler(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_app_error() {
+        let app_error = AppError::DataNotFound;
+        let response = app_error.into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+}
